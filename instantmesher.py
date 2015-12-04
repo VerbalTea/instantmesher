@@ -1,5 +1,5 @@
 import bpy, subprocess, os
-
+from sys import platform as _platform
 
 class InstantMesher(bpy.types.Operator):
     bl_idname = "ops.instantmesher"
@@ -7,6 +7,7 @@ class InstantMesher(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     # custom variables
+    # instantmeshesPath = "instantmeshes" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant 20Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
     instantmeshesPath = "" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant 20Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
     targetDir = "" # If nothing is specified, the 'home' directory is used
 
@@ -15,6 +16,20 @@ class InstantMesher(bpy.types.Operator):
         return True
 
     def execute(self, context):
+
+        # Make OS specific changes
+        if _platform == "linux" or _platform == "linux2":
+            # linux initialization
+            pass
+
+        elif _platform == "darwin":
+            # OS X initialization
+            os.chdir(os.environ['USERPROFILE'])
+
+        elif _platform == "win32":
+            # Windows initialization
+            os.chdir(os.environ['USERPROFILE'])
+
 
         if self.instantmeshesPath == "":
             print("Path to 'instantmeshes' not specified. Terminating...")
