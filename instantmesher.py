@@ -7,7 +7,6 @@ class InstantMesher(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     # custom variables
-    # instantmeshesPath = "instantmeshes" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant 20Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
     instantmeshesPath = "" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant 20Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
     targetDir = "" # If nothing is specified, the 'home' directory is used
 
