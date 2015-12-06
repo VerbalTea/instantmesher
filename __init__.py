@@ -1,4 +1,7 @@
 import subprocess, os, bpy
+from bpy.types import Operator, AddonPreferences
+from bpy.props import StringProperty, IntProperty, BoolProperty
+
 
 bl_info = {
     'name': 'InstantMehser',
@@ -10,6 +13,26 @@ bl_info = {
     'location': 'View3D',
     'category': '3D View'
 }
+
+
+class InstantMesherPreferences(AddonPreferences):
+    bl_idname = __name__
+    instant_path = StringProperty(
+            name="Path to 'instant-meshes'-executable",
+            subtype='FILE_PATH',
+            )
+
+    def draw(self, context):
+            layout = self.layout
+
+            split = layout.split(percentage=1)
+
+            col = split.column()
+            sub = col.column(align=True)
+            sub.prop(self, "instant_path")
+
+            sub.separator()
+
 
 class InstantMesher(bpy.types.Operator):
     bl_idname = "ops.instantmesher"
@@ -25,6 +48,11 @@ class InstantMesher(bpy.types.Operator):
         return True
 
     def execute(self, context):
+        user_preferences = context.user_preferences
+        addon_prefs = user_preferences.addons[__name__].preferences
+        self.instantmeshesPath = str(addon_prefs.instant_path)
+        info = ("Path: %s" %
+                        (addon_prefs.instant_path))
 
         if self.instantmeshesPath == "":
             print("Path to 'instantmeshes' not specified. Terminating...")
@@ -51,13 +79,13 @@ class InstantMesher(bpy.types.Operator):
 
 def register():
     bpy.utils.register_class(InstantMesher)
+    bpy.utils.register_class(InstantMesherPreferences)
 
 
 def unregister():
     bpy.utils.unregister_class(InstantMesher)
-
+    bpy.utils.unregister_class(InstantMesherPreferences)
 
 
 if __name__ == "__main__":
     register()
-
