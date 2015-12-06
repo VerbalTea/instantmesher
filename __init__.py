@@ -47,7 +47,8 @@ class InstantMesher(bpy.types.Operator):
     bl_options = {'REGISTER'}
 
     # custom variables
-    instantmeshesPath = "" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
+    # Defined in the Blender addon preferences
+    instantmeshesPath = "" # Path to the "instant Meshes"-executable
     targetDir = "" # If nothing is specified, the 'home' directory is used
     print(targetDir)
 
@@ -82,15 +83,13 @@ class InstantMesher(bpy.types.Operator):
         name = bpy.context.selected_objects[0].name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
         mtlname = name + ".mtl"
-        bpy.ops.export_scene.obj(filepath=objname, use_selection=True) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
+        bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
         subprocess.call([self.instantmeshesPath, objname]) # Calls instantmeshes and appends the temporary *.obj to it
 
         # IMPORTANT: After remeshing the object in instantmeshes you HAVE TO SAVE IT OVER THE TEMPORARY OBJECT you just created, otherwise it will import the same object you exported, with no changes made
 
         bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
         os.remove(objname) # Removes temporary obj
-        os.remove(mtlname) # Removes temporary mtl
-
 
         return {'FINISHED'}
 
