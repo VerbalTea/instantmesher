@@ -72,21 +72,21 @@ class InstantMesher(bpy.types.Operator):
         if self.targetDir != "" and os.path.isdir(self.targetDir):
             os.chdir(self.targetDir)
 
-        if _platform == "linux" or _platform == "linux2":
-            pass
-        elif _platform == "darwin":
-            pass
-        elif _platform == "win32":
-            if self.targetDir == "":
-                os.chdir(os.environ['USERPROFILE'])
+        else:
+            if _platform == "linux" or _platform == "linux2":
+                os.chdir(os.path.expanduser("~"))
+            elif _platform == "darwin":
+                if self.targetDir == "":
+                    os.chdir(os.path.expanduser("~"))
+            elif _platform == "win32":
+                if self.targetDir == "":
+                    os.chdir(os.path.expanduser("~"))
 
         name = bpy.context.selected_objects[0].name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
         mtlname = name + ".mtl"
         bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
-        subprocess.call([self.instantmeshesPath, objname]) # Calls instantmeshes and appends the temporary *.obj to it
-
-        # IMPORTANT: After remeshing the object in instantmeshes you HAVE TO SAVE IT OVER THE TEMPORARY OBJECT you just created, otherwise it will import the same object you exported, with no changes made
+        subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
         bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
         os.remove(objname) # Removes temporary obj
