@@ -5,7 +5,7 @@ from sys import platform as _platform
 
 
 bl_info = {
-    'name': 'InstantMehser',
+    'name': 'InstantMesher',
     'description': 'automates the exportingn and import process to "instant-meshes"',
     'author': 'tealeaf',
     'version': (1,0),
