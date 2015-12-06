@@ -18,8 +18,13 @@ bl_info = {
 class InstantMesherPreferences(AddonPreferences):
     bl_idname = __name__
     instant_path = StringProperty(
-            name="Path to 'instant-meshes'-executable",
+            name="instant-meshes-executable path",
             subtype='FILE_PATH',
+            )
+
+    temp_folder = StringProperty(
+            name="temp folder to store objs",
+            subtype='DIR_PATH',
             )
 
     def draw(self, context):
@@ -30,6 +35,7 @@ class InstantMesherPreferences(AddonPreferences):
             col = split.column()
             sub = col.column(align=True)
             sub.prop(self, "instant_path")
+            sub.prop(self, "temp_folder")
 
             sub.separator()
 
@@ -42,6 +48,7 @@ class InstantMesher(bpy.types.Operator):
     # custom variables
     instantmeshesPath = "" # Enter the path to instantmeshes here. For me the full path is '/opt/instant-meshes/Instant Meshes' but I made a symbolic link to /usr/local/bin/instantmeshes, so it's just 'instantmeshes'.
     targetDir = "" # If nothing is specified, the 'home' directory is used
+    print(targetDir)
 
     @classmethod
     def poll(cls, context):
@@ -50,7 +57,10 @@ class InstantMesher(bpy.types.Operator):
     def execute(self, context):
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
-        self.instantmeshesPath = str(addon_prefs.instant_path)
+
+        self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
+        self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
+
         info = ("Path: %s" %
                         (addon_prefs.instant_path))
 
