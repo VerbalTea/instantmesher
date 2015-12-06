@@ -1,6 +1,7 @@
 import subprocess, os, bpy
 from bpy.types import Operator, AddonPreferences
 from bpy.props import StringProperty, IntProperty, BoolProperty
+from sys import platform as _platform
 
 
 bl_info = {
@@ -61,8 +62,7 @@ class InstantMesher(bpy.types.Operator):
         self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
         self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
 
-        info = ("Path: %s" %
-                        (addon_prefs.instant_path))
+        info = ("Path: %s" % (addon_prefs.instant_path))
 
         if self.instantmeshesPath == "":
             print("Path to 'instantmeshes' not specified. Terminating...")
@@ -70,6 +70,14 @@ class InstantMesher(bpy.types.Operator):
 
         if self.targetDir != "" and os.path.isdir(self.targetDir):
             os.chdir(self.targetDir)
+
+        if _platform == "linux" or _platform == "linux2":
+            pass
+        elif _platform == "darwin":
+            pass
+        elif _platform == "win32":
+            if self.targetDir == "":
+                os.chdir(os.environ['USERPROFILE'])
 
         name = bpy.context.selected_objects[0].name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
