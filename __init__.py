@@ -73,14 +73,16 @@ class InstantMesher(bpy.types.Operator):
             os.chdir(self.targetDir)
 
         else:
-            if _platform == "linux" or _platform == "linux2":
-                os.chdir(os.path.expanduser("~"))
-            elif _platform == "darwin":
-                if self.targetDir == "":
-                    os.chdir(os.path.expanduser("~"))
-            elif _platform == "win32":
-                if self.targetDir == "":
-                    os.chdir(os.path.expanduser("~"))
+            os.chdir(os.path.expanduser("~"))
+            
+            # if _platform == "linux" or _platform == "linux2":
+            #     os.chdir(os.path.expanduser("~"))
+            # elif _platform == "darwin":
+            #     if self.targetDir == "":
+            #         os.chdir(os.path.expanduser("~"))
+            # elif _platform == "win32":
+            #     if self.targetDir == "":
+            #         os.chdir(os.path.expanduser("~"))
 
         name = bpy.context.selected_objects[0].name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
