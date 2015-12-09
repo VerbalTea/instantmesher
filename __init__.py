@@ -6,7 +6,7 @@ from sys import platform as _platform
 
 bl_info = {
     'name': 'InstantMesher',
-    'description': 'automates the exportingn and import process to "instant-meshes"',
+    'description': 'automates the exporting and importing process to "Instant Meshes"',
     'author': 'tealeaf',
     'version': (1,0),
     'blender': (2, 75, 0),
@@ -19,7 +19,7 @@ bl_info = {
 class InstantMesherPreferences(AddonPreferences):
     bl_idname = __name__
     instant_path = StringProperty(
-            name="instant-meshes-executable path",
+            name="Instant Meshes-executable path",
             subtype='FILE_PATH',
             )
 
@@ -36,9 +36,9 @@ class InstantMesherPreferences(AddonPreferences):
             col = split.column()
             sub = col.column(align=True)
             sub.prop(self, "instant_path")
+            sub.separator()
             sub.prop(self, "temp_folder")
 
-            sub.separator()
 
 
 class InstantMesher(bpy.types.Operator):
