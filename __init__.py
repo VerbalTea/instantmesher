@@ -212,7 +212,7 @@ class InstantMesherPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_instantmesher"
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
-    bl_category = "Instant Mesher"
+    bl_category = "Retopology"
     bl_context = "objectmode"
 
     def draw(self, context):
