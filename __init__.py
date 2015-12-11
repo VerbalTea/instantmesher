@@ -209,13 +209,13 @@ class InstantMesherPanel(bpy.types.Panel):
         wm = context.window_manager
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Launch Instant Meshes").operation = "regular"
+        layout.operator("ops.instantmesher", text="Send to Instant Meshes").operation = "regular"
 
-        layout.separator()
         layout.separator()
         layout.separator()
 
         row = layout.row()
+        row.label(text="Native Tools")
 
         row = layout.row()
         row.alignment = "EXPAND"
@@ -234,9 +234,9 @@ class InstantMesherPanel(bpy.types.Panel):
 
         layout.separator()
         layout.separator()
-        layout.separator()
-        layout.separator()
 
+        row = layout.row()
+        row.label(text="Utilities (experimental)")
         row = layout.row()
         layout.operator("ops.instantmesher", text="Clear Sharp Edges").operation = "clearsharp"
 
