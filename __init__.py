@@ -1,4 +1,4 @@
-import subprocess, os, bpy
+import subprocess, os, bpy, bmesh
 from bpy.types import Operator, AddonPreferences, Panel
 from bpy.props import StringProperty, IntProperty, BoolProperty
 from sys import platform as _platform
@@ -40,83 +40,12 @@ class InstantMesherPreferences(AddonPreferences):
             sub.prop(self, "temp_folder")
 
 
-
 class InstantMesher(bpy.types.Operator):
     bl_idname = "ops.instantmesher"
-    bl_label = "instant-meshes export"
-    bl_options = {'REGISTER'}
-
-    # custom variables
-    # Defined in the Blender addon preferences
-    instantmeshesPath = "" # Path to the "instant Meshes"-executable
-    targetDir = "" # If nothing is specified, the 'home' directory is used
-
-    @classmethod
-    def poll(cls, context):
-        return True
-
-    def execute(self, context):
-        if len(bpy.context.selected_objects) < 1:
-            return {'CANCELLED'}
-
-        user_preferences = context.user_preferences
-        addon_prefs = user_preferences.addons[__name__].preferences
-
-        self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
-        self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
-
-        info = ("Path: %s" % (addon_prefs.instant_path))
-
-        if self.instantmeshesPath == "":
-            print("Path to 'instant Meshes' not specified. Terminating...")
-            return {'CANCELLED'}
-
-        if self.targetDir != "" and os.path.isdir(self.targetDir):
-            os.chdir(self.targetDir)
-        else:
-            os.chdir(os.path.expanduser("~"))
-            # if _platform == "linux" or _platform == "linux2":
-            #     os.chdir(os.path.expanduser("~"))
-            # elif _platform == "darwin":
-            #     os.chdir(os.path.expanduser("~"))
-            # elif _platform == "win32":
-            #     os.chdir(os.path.expanduser("~"))
-
-        name = bpy.context.active_object.name
-        objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
-
-        try:
-            bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
-        except:
-            print("Could not create OBJ")
-            return {'CANCELLED'}
-
-        creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
-
-        subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-
-        if(os.path.getmtime(objname) != creationTime):
-            try:
-                bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
-            except:
-                print("Could not import OBJ")
-                return {'CANCELLED'}
-        else:
-            print("Object has not changed. Skipping import...")
-            pass
-
-        try:
-            os.remove(objname) # Removes temporary obj
-        except:
-            print("Could not remove OBJ")
-
-        return {'FINISHED'}
-
-
-class InstantMesherCMD(bpy.types.Operator):
-    bl_idname = "ops.instantmeshercmd"
     bl_label = "instant-meshes cmd"
-    bl_options = {'REGISTER'}
+    bl_options = {'REGISTER', 'UNDO'}
+
+    operation = bpy.props.StringProperty()
 
     # custom variables
     # Defined in the Blender addon preferences
@@ -133,6 +62,11 @@ class InstantMesherCMD(bpy.types.Operator):
 
         user_preferences = context.user_preferences
         addon_prefs = user_preferences.addons[__name__].preferences
+
+        if self.operation == "shrinkwrap":
+            self.shrinkwrap()
+        elif self.operation == "clearsharp":
+            self.clearsharp()
 
         self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
         self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
@@ -160,47 +94,101 @@ class InstantMesherCMD(bpy.types.Operator):
 
         try:
             bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
-        except:
-            print("Could not create OBJ")
+        except Exception as e:
+            printErrorMessage("Could not create OBJ", e)
             return {'CANCELLED'}
 
         creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
 
-        wm = context.window_manager
+        if self.operation == "cmd":
+            wm = context.window_manager
 
-        smoothingIts = str(wm.instantMesherSmoothingInt)
-        allQuads = wm.instantMesherQuadsBool
-        vertsAmount = str(wm.instantMesherVertexCountInt)
+            smoothingIts = str(wm.instantMesherSmoothingInt)
+            allQuads = wm.instantMesherQuadsBool
+            vertsAmount = wm.instantMesherVertexCountInt
 
-        # placeholder values
-        # smoothingIts = 2
-        # allQuads = True
-        # vertsAmount = 5000
+            if allQuads:
+                vertsAmount = int(vertsAmount/4)
 
-        try:
-            if not allQuads:
-                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-            else:
-                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+            vertsAmount = str(vertsAmount)
 
-        except:
-            print("Could not execute Instant Meshes")
+            # placeholder values
+            # smoothingIts = 2
+            # allQuads = True
+            # vertsAmount = 5000
 
+            try:
+                if not allQuads:
+                    subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+                else:
+                    subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
-        if(os.path.getmtime(objname) != creationTime):
+            except Exception as e:
+                printErrorMessage("Could not execute Instant Meshes", e)
+
             try:
                 bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
-            except:
-                print("Could not import OBJ")
+            except Exception as e:
+                printErrorMessage("Could not import OBJ", e)
                 return {'CANCELLED'}
-        else:
-            print("Object has not changed. Skipping import...")
-            pass
+
+        elif self.operation == "regular":
+            subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+
+            if(os.path.getmtime(objname) != creationTime):
+                try:
+                    bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
+                except Exception as e:
+                    printErrorMessage("Could not import OBJ", e)
+                    return {'CANCELLED'}
+            else:
+                print("Object has not changed. Skipping import...")
+                pass
 
         try:
             os.remove(objname) # Removes temporary obj
-        except:
-            print("Could not remove OBJ")
+        except Exception as e:
+            printErrorMessage("Could not remove OBJ", e)
+
+        return {'FINISHED'}
+
+
+    def shrinkwrap(self):
+        try:
+            remeshed_object = ""
+            target_object = bpy.context.active_object
+
+            for obj in bpy.context.selected_objects:
+                if obj is not target_object:
+                    remeshed_object = obj
+                    break
+
+            bpy.context.scene.objects.active = remeshed_object
+
+            bpy.ops.object.modifier_add(type='SHRINKWRAP')
+            bpy.context.object.modifiers["Shrinkwrap"].wrap_method = 'PROJECT'
+            bpy.context.object.modifiers["Shrinkwrap"].use_negative_direction = True
+            bpy.context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[target_object.name]
+            bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
+        except Exception as e:
+            printErrorMessage("Shrinkwrap-operation failed.", e)
+            return {'CANCELLED'}
+
+
+        return {'FINISHED'}
+
+
+    def clearsharp(self):
+        try:
+            bpy.ops.object.editmode_toggle()
+
+            bpy.ops.mesh.select_all(action="SELECT")
+
+            bpy.ops.mesh.mark_sharp(clear=True)
+            bpy.ops.object.editmode_toggle()
+        except Exception as e:
+            printErrorMessage("Clearsharp-operation failed.", e)
+            return {'CANCELLED'}
 
         return {'FINISHED'}
 
@@ -221,7 +209,7 @@ class InstantMesherPanel(bpy.types.Panel):
         wm = context.window_manager
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Launch Instant Meshes")
+        layout.operator("ops.instantmesher", text="Launch Instant Meshes").operation = "regular"
 
         layout.separator()
         layout.separator()
@@ -242,13 +230,30 @@ class InstantMesherPanel(bpy.types.Panel):
         row.prop(wm, 'instantMesherQuadsBool', text="All Quads")
 
         row = layout.row()
-        layout.operator("ops.instantmeshercmd", text="Remesh")
+        layout.operator("ops.instantmesher", text="Remesh").operation = "cmd"
+
+        layout.separator()
+        layout.separator()
+        layout.separator()
+        layout.separator()
+
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Clear Sharp Edges").operation = "clearsharp"
+
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object").operation = "shrinkwrap"
+
+
+# Utility functions
+def printErrorMessage(msg, e):
+    print("-- Error ---- !")
+    print(msg, "\n", str(e))
+    print("------\n\n")
 
 
 
 def register():
     bpy.utils.register_class(InstantMesher)
-    bpy.utils.register_class(InstantMesherCMD)
     bpy.utils.register_class(InstantMesherPanel)
     bpy.utils.register_class(InstantMesherPreferences)
 
@@ -259,7 +264,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(InstantMesher)
-    bpy.utils.unregister_class(InstantMesherCMD)
     bpy.utils.unregister_class(InstantMesherPanel)
     bpy.utils.unregister_class(InstantMesherPreferences)
 
