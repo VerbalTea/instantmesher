@@ -1,4 +1,4 @@
-import subprocess, os, bpy, bmesh
+import subprocess, os, bpy
 from bpy.types import Operator, AddonPreferences, Panel
 from bpy.props import StringProperty, IntProperty, BoolProperty
 from sys import platform as _platform
@@ -60,13 +60,35 @@ class InstantMesher(bpy.types.Operator):
         if len(bpy.context.selected_objects) < 1:
             return {'CANCELLED'}
 
-        user_preferences = context.user_preferences
-        addon_prefs = user_preferences.addons[__name__].preferences
-
         if self.operation == "shrinkwrap":
             self.shrinkwrap()
         elif self.operation == "clearsharp":
             self.clearsharp()
+
+        self.setUpPaths(context)
+
+        name = bpy.context.active_object.name
+        objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
+
+        try:
+            bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
+        except Exception as e:
+            printErrorMessage("Could not create OBJ", e)
+            return {'CANCELLED'}
+
+        if self.operation == "cmd":
+            self.cmd(objname, context)
+
+        elif self.operation == "regular":
+            self.regular(objname, context)
+
+        return {'FINISHED'}
+
+
+
+    def setUpPaths(self, context):
+        user_preferences = context.user_preferences
+        addon_prefs = user_preferences.addons[__name__].preferences
 
         self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
         self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
@@ -89,68 +111,62 @@ class InstantMesher(bpy.types.Operator):
                 if self.targetDir == "":
                     os.chdir(os.path.expanduser("~"))
 
-        name = bpy.context.active_object.name
-        objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
+
+
+    def cmd(self, objname, context):
+        wm = context.window_manager
+
+        smoothingIts = str(wm.instantMesherSmoothingInt)
+        allQuads = bool(wm.instantMesherQuadsBool)
+        vertsAmount = wm.instantMesherVertexCountInt
+
 
         try:
-            bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
-        except Exception as e:
-            printErrorMessage("Could not create OBJ", e)
-            return {'CANCELLED'}
-
-        creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
-
-        if self.operation == "cmd":
-            wm = context.window_manager
-
-            smoothingIts = str(wm.instantMesherSmoothingInt)
-            allQuads = wm.instantMesherQuadsBool
-            vertsAmount = wm.instantMesherVertexCountInt
-
             if allQuads:
-                vertsAmount = int(vertsAmount/4)
-
-            vertsAmount = str(vertsAmount)
-
-            # placeholder values
-            # smoothingIts = 2
-            # allQuads = True
-            # vertsAmount = 5000
-
-            try:
-                if not allQuads:
-                    subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-                else:
-                    subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-
-            except Exception as e:
-                printErrorMessage("Could not execute Instant Meshes", e)
-
-            try:
-                bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
-            except Exception as e:
-                printErrorMessage("Could not import OBJ", e)
-                return {'CANCELLED'}
-
-        elif self.operation == "regular":
-            subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-
-            if(os.path.getmtime(objname) != creationTime):
-                try:
-                    bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
-                except Exception as e:
-                    printErrorMessage("Could not import OBJ", e)
-                    return {'CANCELLED'}
+                vertsAmount = str(int(vertsAmount/4))
+                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
             else:
-                print("Object has not changed. Skipping import...")
-                pass
+                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", str(vertsAmount), "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+
+        except Exception as e:
+            printErrorMessage("Could not execute Instant Meshes", e)
+
+        try:
+            bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
+        except Exception as e:
+            printErrorMessage("Could not import OBJ", e)
+            return {'CANCELLED'}
 
         try:
             os.remove(objname) # Removes temporary obj
         except Exception as e:
             printErrorMessage("Could not remove OBJ", e)
 
-        return {'FINISHED'}
+
+    def regular(self, objname, context):
+        creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
+
+        try:
+            subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+
+        except Exception as e:
+            printErrorMessage("Could not execute 'Instant Meshes'", e)
+
+        if(os.path.getmtime(objname) != creationTime):
+            try:
+                bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
+            except Exception as e:
+                printErrorMessage("Could not import OBJ", e)
+                return {'CANCELLED'}
+        else:
+            print("Object has not changed. Skipping import...")
+            pass
+
+        try:
+            os.remove(objname) # Removes temporary obj
+        except Exception as e:
+            printErrorMessage("Could not remove OBJ", e)
+
 
 
     def shrinkwrap(self):
@@ -176,6 +192,7 @@ class InstantMesher(bpy.types.Operator):
 
 
         return {'FINISHED'}
+
 
 
     def clearsharp(self):
