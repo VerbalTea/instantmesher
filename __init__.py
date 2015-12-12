@@ -64,6 +64,8 @@ class InstantMesher(bpy.types.Operator):
             self.shrinkwrap()
         elif self.operation == "clearsharp":
             self.clearsharp()
+        elif self.operation == "triangulate":
+            self.triangulate()
 
         self.setUpPaths(context)
 
@@ -210,6 +212,19 @@ class InstantMesher(bpy.types.Operator):
         return {'FINISHED'}
 
 
+    def triangulate(self):
+        try:
+            bpy.ops.object.editmode_toggle()
+            bpy.ops.mesh.select_all(action="SELECT")
+            bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
+            bpy.ops.object.editmode_toggle()
+
+        except Exception as e:
+            printErrorMessage("Triangulation failed", e)
+            return {'CANCELLED'}
+
+
+
 
 class InstantMesherPanel(bpy.types.Panel):
     """ """
@@ -226,7 +241,7 @@ class InstantMesherPanel(bpy.types.Panel):
         wm = context.window_manager
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Send to Instant Meshes").operation = "regular"
+        layout.operator("ops.instantmesher", text="Send to Instant Meshes", icon="MESH_MONKEY").operation = "regular"
 
         layout.separator()
         layout.separator()
@@ -247,7 +262,7 @@ class InstantMesherPanel(bpy.types.Panel):
         row.prop(wm, 'instantMesherQuadsBool', text="All Quads")
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Remesh").operation = "cmd"
+        layout.operator("ops.instantmesher", text="Remesh", icon="PLAY").operation = "cmd"
 
         layout.separator()
         layout.separator()
@@ -255,10 +270,12 @@ class InstantMesherPanel(bpy.types.Panel):
         row = layout.row()
         row.label(text="Utilities (experimental)")
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Clear Sharp Edges").operation = "clearsharp"
+        layout.operator("ops.instantmesher", text="Clear Sharp Edges", icon="WORLD").operation = "clearsharp"
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object").operation = "shrinkwrap"
+        layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object", icon="MOD_SHRINKWRAP").operation = "shrinkwrap"
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
 
 
 # Utility functions
