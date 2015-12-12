@@ -62,10 +62,13 @@ class InstantMesher(bpy.types.Operator):
 
         if self.operation == "shrinkwrap":
             self.shrinkwrap()
+            return {'FINISHED'}
         elif self.operation == "clearsharp":
             self.clearsharp()
+            return {'FINISHED'}
         elif self.operation == "triangulate":
             self.triangulate()
+            return {'FINISHED'}
 
         self.setUpPaths(context)
 
@@ -186,7 +189,6 @@ class InstantMesher(bpy.types.Operator):
                     break
 
             bpy.ops.object.select_all(action='DESELECT')
-            # remeshed_object.select = 1
             bpy.context.scene.objects.active = remeshed_object
 
             bpy.ops.object.modifier_add(type='SHRINKWRAP')
