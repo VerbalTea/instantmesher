@@ -72,7 +72,7 @@ class InstantMesher(bpy.types.Operator):
         active_object = bpy.context.active_object
         name = active_object.name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
-        bpy.ops.view3d.snap_cursor_to_selected()
+        bpy.ops.view3d.snap_cursor_to_selected() # Set 3D Cursor to the origin of the selected object
 
         try:
             bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
@@ -86,7 +86,7 @@ class InstantMesher(bpy.types.Operator):
         elif self.operation == "regular":
             self.regular(objname, context)
 
-        bpy.ops.object.ogtc()
+        bpy.ops.object.ogtc() # Set object origin to 3D Cursor
 
         return {'FINISHED'}
 
@@ -178,19 +178,21 @@ class InstantMesher(bpy.types.Operator):
     def shrinkwrap(self):
         try:
             remeshed_object = ""
-            target_object = bpy.context.active_object
+            target_object = bpy.context.active_object.name
 
             for obj in bpy.context.selected_objects:
                 if obj is not target_object:
                     remeshed_object = obj
                     break
 
+            bpy.ops.object.select_all(action='DESELECT')
+            # remeshed_object.select = 1
             bpy.context.scene.objects.active = remeshed_object
 
             bpy.ops.object.modifier_add(type='SHRINKWRAP')
             bpy.context.object.modifiers["Shrinkwrap"].wrap_method = 'PROJECT'
             bpy.context.object.modifiers["Shrinkwrap"].use_negative_direction = True
-            bpy.context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[target_object.name]
+            bpy.context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[target_object]
             bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
         except Exception as e:
             printErrorMessage("Shrinkwrap-operation failed.", e)
