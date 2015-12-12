@@ -24,7 +24,7 @@ class InstantMesherPreferences(AddonPreferences):
             )
 
     temp_folder = StringProperty(
-            name="temp folder to store objs",
+            name="folder to store temp objs",
             subtype='DIR_PATH',
             )
 
@@ -241,7 +241,7 @@ class InstantMesherPanel(bpy.types.Panel):
         wm = context.window_manager
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Send to Instant Meshes", icon="MESH_MONKEY").operation = "regular"
+        layout.operator("ops.instantmesher", text="Send to Instant Meshes", icon="LINK_AREA").operation = "regular"
 
         layout.separator()
         layout.separator()
