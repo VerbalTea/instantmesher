@@ -42,7 +42,7 @@ class InstantMesherPreferences(AddonPreferences):
 
 class InstantMesher(bpy.types.Operator):
     bl_idname = "ops.instantmesher"
-    bl_label = "instant-meshes cmd"
+    bl_label = "instant meshes export"
     bl_options = {'REGISTER', 'UNDO'}
 
     operation = bpy.props.StringProperty()
