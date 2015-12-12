@@ -69,8 +69,10 @@ class InstantMesher(bpy.types.Operator):
 
         self.setUpPaths(context)
 
-        name = bpy.context.active_object.name
+        active_object = bpy.context.active_object
+        name = active_object.name
         objname = name + ".obj" # The temp object is called the same as the active object you have selected in Blender.
+        bpy.ops.view3d.snap_cursor_to_selected()
 
         try:
             bpy.ops.export_scene.obj(filepath=objname, use_selection=True, use_materials=False) # Exports the *.obj to your home directory (on Linux, at least) or the directory you specified above under the 'targetDir' variable
@@ -83,6 +85,8 @@ class InstantMesher(bpy.types.Operator):
 
         elif self.operation == "regular":
             self.regular(objname, context)
+
+        bpy.ops.object.ogtc()
 
         return {'FINISHED'}
 
