@@ -2,7 +2,7 @@ import subprocess, os, bpy
 from bpy.types import Operator, AddonPreferences, Panel
 from bpy.props import StringProperty, IntProperty, BoolProperty
 from sys import platform as _platform
-
+import bpy.utils.previews
 
 bl_info = {
     'name': 'InstantMesher',
@@ -61,14 +61,11 @@ class InstantMesher(bpy.types.Operator):
             return {'CANCELLED'}
 
         if self.operation == "shrinkwrap":
-            self.shrinkwrap()
-            return {'FINISHED'}
+            return self.shrinkwrap()
         elif self.operation == "clearsharp":
-            self.clearsharp()
-            return {'FINISHED'}
+            return self.clearsharp()
         elif self.operation == "triangulate":
-            self.triangulate()
-            return {'FINISHED'}
+            return self.triangulate()
 
         self.setUpPaths(context)
 
@@ -124,11 +121,13 @@ class InstantMesher(bpy.types.Operator):
 
     def cmd(self, objname, context):
         wm = context.window_manager
+        creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
 
         smoothingIts = str(wm.instantMesherSmoothingInt)
         allQuads = bool(wm.instantMesherQuadsBool)
         vertsAmount = wm.instantMesherVertexCountInt
 
+        print("VERTSAMOUNT", str(vertsAmount))
 
         try:
             if allQuads:
@@ -140,11 +139,15 @@ class InstantMesher(bpy.types.Operator):
         except Exception as e:
             printErrorMessage("Could not execute Instant Meshes", e)
 
-        try:
-            bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
-        except Exception as e:
-            printErrorMessage("Could not import OBJ", e)
-            return {'CANCELLED'}
+        if(os.path.getmtime(objname) != creationTime):
+            try:
+                bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
+            except Exception as e:
+                printErrorMessage("Could not import OBJ", e)
+                return {'CANCELLED'}
+        else:
+            print("Object has not changed. Skipping import...")
+            pass
 
         try:
             os.remove(objname) # Removes temporary obj
@@ -196,12 +199,12 @@ class InstantMesher(bpy.types.Operator):
             bpy.context.object.modifiers["Shrinkwrap"].use_negative_direction = True
             bpy.context.object.modifiers["Shrinkwrap"].target = bpy.data.objects[target_object]
             bpy.ops.object.modifier_apply(apply_as='DATA', modifier="Shrinkwrap")
+
+            return {'FINISHED'}
         except Exception as e:
             printErrorMessage("Shrinkwrap-operation failed.", e)
             return {'CANCELLED'}
 
-
-        return {'FINISHED'}
 
 
 
@@ -213,11 +216,11 @@ class InstantMesher(bpy.types.Operator):
 
             bpy.ops.mesh.mark_sharp(clear=True)
             bpy.ops.object.editmode_toggle()
+
+            return {'FINISHED'}
         except Exception as e:
             printErrorMessage("Clearsharp-operation failed.", e)
             return {'CANCELLED'}
-
-        return {'FINISHED'}
 
 
     def triangulate(self):
@@ -227,6 +230,7 @@ class InstantMesher(bpy.types.Operator):
             bpy.ops.mesh.quads_convert_to_tris(quad_method='BEAUTY', ngon_method='BEAUTY')
             bpy.ops.object.editmode_toggle()
 
+            return {'FINISHED'}
         except Exception as e:
             printErrorMessage("Triangulation failed", e)
             return {'CANCELLED'}
@@ -243,13 +247,15 @@ class InstantMesherPanel(bpy.types.Panel):
     bl_category = "Retopology"
     bl_context = "objectmode"
 
+    global icons_dict
+
     def draw(self, context):
         layout = self.layout
         obj = context.object
         wm = context.window_manager
 
         row = layout.row()
-        layout.operator("ops.instantmesher", text="Send to Instant Meshes", icon="LINK_AREA").operation = "regular"
+        layout.operator("ops.instantmesher", icon_value=icons_dict["instant_meshes"].icon_id, text="Send to Instant Meshes").operation = "regular"
 
         layout.separator()
         layout.separator()
@@ -293,8 +299,18 @@ def printErrorMessage(msg, e):
     print("------\n\n")
 
 
+def loadIcons():
+    global icons_dict
+    icons_dict = bpy.utils.previews.new()
+    icons_dir = os.path.join(os.path.dirname(__file__), "icons")
+    images = [f for f in os.listdir(icons_dir) if os.path.isfile(icons_dir + "/" + f)]
+
+    for image in images:
+        icons_dict.load(image[:-4], os.path.join(icons_dir, image), "IMAGE")
+
 
 def register():
+    loadIcons()
     bpy.utils.register_class(InstantMesher)
     bpy.utils.register_class(InstantMesherPanel)
     bpy.utils.register_class(InstantMesherPreferences)
