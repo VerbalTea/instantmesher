@@ -93,6 +93,9 @@ class InstantMesher(bpy.types.Operator):
         except:
             bpy.ops.object.ogtc()
 
+
+        self.operation = "regular"
+
         return {'FINISHED'}
 
 
