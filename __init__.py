@@ -88,7 +88,7 @@ class InstantMesher(bpy.types.Operator):
         elif self.operation == "regular":
             self.regular(objname, context)
 
-        bpy.ops.object.ogtc() # Set object origin to 3D Cursor
+        bpy.ops.object.origin_set(type='ORIGIN_CURSOR') # Set object origin to 3D Cursor
 
         return {'FINISHED'}
 
