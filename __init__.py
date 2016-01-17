@@ -18,6 +18,7 @@ bl_info = {
 
 class InstantMesherPreferences(AddonPreferences):
     bl_idname = __name__
+
     instant_path = StringProperty(
             name="Instant Meshes-executable path",
             subtype='FILE_PATH',
@@ -27,6 +28,12 @@ class InstantMesherPreferences(AddonPreferences):
             name="folder to store temp objs",
             subtype='DIR_PATH',
             )
+
+    sketch_path = StringProperty(
+            name="Sketch-Retopo-executable path",
+            subtype='FILE_PATH',
+            )
+
 
     def draw(self, context):
             layout = self.layout
@@ -38,18 +45,22 @@ class InstantMesherPreferences(AddonPreferences):
             sub.prop(self, "instant_path")
             sub.separator()
             sub.prop(self, "temp_folder")
+            sub.separator()
+            sub.prop(self, "sketch_path")
 
 
 class InstantMesher(bpy.types.Operator):
     bl_idname = "ops.instantmesher"
     bl_label = "instant meshes export"
     bl_options = {'REGISTER', 'UNDO'}
+    bl_region_type = "WINDOW"
 
     operation = bpy.props.StringProperty()
 
     # custom variables
     # Defined in the Blender addon preferences
     instantmeshesPath = "" # Path to the "instant Meshes"-executable
+    sketchretopPath = "" # Path to the "Sketch-Retopo"-executable
     targetDir = "" # If nothing is specified, the 'home' directory is used
 
     @classmethod
@@ -86,7 +97,16 @@ class InstantMesher(bpy.types.Operator):
         elif self.operation == "regular":
             self.regular(objname, context)
 
-        bpy.ops.object.ogtc() # Set object origin to 3D Cursor
+        elif self.operation == "sketch":
+            self.sketch(objname, context)
+
+        try:
+            bpy.ops.object.origin_set(type='ORIGIN_CURSOR') # Set object origin to 3D Cursor
+        except:
+            bpy.ops.object.ogtc()
+
+
+        self.operation = "regular"
 
         return {'FINISHED'}
 
@@ -97,6 +117,7 @@ class InstantMesher(bpy.types.Operator):
         addon_prefs = user_preferences.addons[__name__].preferences
 
         self.instantmeshesPath = str(addon_prefs.instant_path) # Set path for instant meshes
+        self.sketchretopPath = str(addon_prefs.sketch_path) # Set path for Sketch-Retopo
         self.targetDir = str(addon_prefs.temp_folder) # Set path for temp dir to store objs in
 
         info = ("Path: %s" % (addon_prefs.instant_path))
@@ -182,6 +203,33 @@ class InstantMesher(bpy.types.Operator):
             printErrorMessage("Could not remove OBJ", e)
 
 
+    def sketch(self, objname, context):
+        creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
+
+        if self.sketchretopPath == "":
+            return {'CANCELLED'}
+
+        try:
+            subprocess.call([self.sketchretopPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+
+        except Exception as e:
+            printErrorMessage("Could not execute 'Sketch-Retopo'", e)
+
+        if(os.path.getmtime(objname) != creationTime):
+            try:
+                bpy.ops.import_scene.obj(filepath=objname) # Imports remeshed obj into Blender
+            except Exception as e:
+                printErrorMessage("Could not import OBJ", e)
+                return {'CANCELLED'}
+        else:
+            print("Object has not changed. Skipping import...")
+            pass
+
+        try:
+            os.remove(objname) # Removes temporary obj
+        except Exception as e:
+            printErrorMessage("Could not remove OBJ", e)
+
 
     def shrinkwrap(self):
         try:
@@ -252,46 +300,72 @@ class InstantMesherPanel(bpy.types.Panel):
     global icons_dict
 
     def draw(self, context):
+        user_preferences = context.user_preferences
+        addon_prefs = user_preferences.addons[__name__].preferences
+
+        instantmeshesPath = str(addon_prefs.instant_path)
+        sketchPath = str(addon_prefs.sketch_path)
+
+
+
         layout = self.layout
         obj = context.object
         wm = context.window_manager
-
         row = layout.row()
-        layout.operator("ops.instantmesher", icon_value=icons_dict["instant_meshes"].icon_id, text="Send to Instant Meshes").operation = "regular"
 
-        layout.separator()
-        layout.separator()
+        if instantmeshesPath != "":
+            layout.operator("ops.instantmesher", icon_value=icons_dict["instant_meshes"].icon_id, text="Send to Instant Meshes").operation = "regular"
+            layout.separator()
+        else:
+            row = layout.row()
+            row.alignment = "EXPAND"
+            row.label("Path to Instant Meshes not set!")
+            layout.separator()
 
-        row = layout.row()
-        row.label(text="Native Tools")
+        if sketchPath != "":
+            layout.operator("ops.instantmesher", icon_value=icons_dict["instant_meshes"].icon_id, text="Send to Sketch-Retopo").operation = "sketch"
 
-        row = layout.row()
-        row.alignment = "EXPAND"
-        row.prop(wm, 'instantMesherVertexCountInt', text="vertices")
+            layout.separator()
+            layout.separator()
+        else:
+            row = layout.row()
+            row.alignment = "EXPAND"
+            row.label("Path to Sketch-Retopo not set!")
+            layout.separator()
+            layout.separator()
 
-        row = layout.row()
-        row.alignment = "EXPAND"
-        row.prop(wm, 'instantMesherSmoothingInt', text="smoothing")
 
-        row = layout.row()
-        row.alignment = "EXPAND"
-        row.prop(wm, 'instantMesherQuadsBool', text="All Quads")
+        if instantmeshesPath != "":
+            row = layout.row()
+            row.label(text="Native Tools")
 
-        row = layout.row()
-        layout.operator("ops.instantmesher", text="Remesh", icon="PLAY").operation = "cmd"
+            row = layout.row()
+            row.alignment = "EXPAND"
+            row.prop(wm, 'instantMesherVertexCountInt', text="vertices")
 
-        layout.separator()
-        layout.separator()
+            row = layout.row()
+            row.alignment = "EXPAND"
+            row.prop(wm, 'instantMesherSmoothingInt', text="smoothing")
 
-        row = layout.row()
-        row.label(text="Utilities (experimental)")
-        row = layout.row()
-        layout.operator("ops.instantmesher", text="Clear Sharp Edges", icon="WORLD").operation = "clearsharp"
+            row = layout.row()
+            row.alignment = "EXPAND"
+            row.prop(wm, 'instantMesherQuadsBool', text="All Quads")
 
-        row = layout.row()
-        layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object", icon="MOD_SHRINKWRAP").operation = "shrinkwrap"
-        row = layout.row()
-        layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
+            row = layout.row()
+            layout.operator("ops.instantmesher", text="Remesh", icon="PLAY").operation = "cmd"
+
+            layout.separator()
+            layout.separator()
+
+            row = layout.row()
+            row.label(text="Utilities (experimental)")
+            row = layout.row()
+            layout.operator("ops.instantmesher", text="Clear Sharp Edges", icon="WORLD").operation = "clearsharp"
+
+            row = layout.row()
+            layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object", icon="MOD_SHRINKWRAP").operation = "shrinkwrap"
+            row = layout.row()
+            layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
 
 
 # Utility functions
