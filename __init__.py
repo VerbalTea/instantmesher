@@ -182,7 +182,7 @@ class InstantMesher(bpy.types.Operator):
         creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
 
         try:
-            subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+            subprocess.call([self.instantmeshesPath, os.getcwd() + "\\" + objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
         except Exception as e:
             printErrorMessage("Could not execute 'Instant Meshes'", e)
