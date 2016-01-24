@@ -1,6 +1,6 @@
 import subprocess, os, bpy
 from bpy.types import Operator, AddonPreferences, Panel
-from bpy.props import StringProperty, IntProperty, BoolProperty
+from bpy.props import StringProperty, IntProperty, BoolProperty, EnumProperty
 from sys import platform as _platform
 import bpy.utils.previews
 
@@ -152,15 +152,15 @@ class InstantMesher(bpy.types.Operator):
 
         print("VERTSAMOUNT", str(vertsAmount))
 
-        try:
-            if allQuads:
-                vertsAmount = str(int(vertsAmount/4))
-                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
-            else:
-                subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", str(vertsAmount), "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+        # try:
+        if allQuads:
+            vertsAmount = str(int(vertsAmount/4))
+            subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", vertsAmount, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+        else:
+            subprocess.call([self.instantmeshesPath,  "-o", objname, "-S", str(smoothingIts), "-v", str(vertsAmount), "-D", objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
-        except Exception as e:
-            printErrorMessage("Could not execute Instant Meshes", e)
+        # except Exception as e:
+        #     printErrorMessage("Could not execute Instant Meshes", e)
 
         if(os.path.getmtime(objname) != creationTime):
             try:
@@ -181,11 +181,11 @@ class InstantMesher(bpy.types.Operator):
     def regular(self, objname, context):
         creationTime = os.path.getmtime(objname) # Get creation time of obj for later comparison
 
-        try:
-            subprocess.call([self.instantmeshesPath, os.getcwd() + "\\" + objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+        # try:
+        subprocess.call([self.instantmeshesPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
-        except Exception as e:
-            printErrorMessage("Could not execute 'Instant Meshes'", e)
+        # except Exception as e:
+        #     printErrorMessage("Could not execute 'Instant Meshes'", e)
 
         if(os.path.getmtime(objname) != creationTime):
             try:
@@ -209,11 +209,11 @@ class InstantMesher(bpy.types.Operator):
         if self.sketchretopPath == "":
             return {'CANCELLED'}
 
-        try:
-            subprocess.call([self.sketchretopPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
+        # try:
+        subprocess.call([self.sketchretopPath, objname]) # Calls Instant Meshes and appends the temporary *.obj to it
 
-        except Exception as e:
-            printErrorMessage("Could not execute 'Sketch-Retopo'", e)
+        # except Exception as e:
+        #     printErrorMessage("Could not execute 'Sketch-Retopo'", e)
 
         if(os.path.getmtime(objname) != creationTime):
             try:
@@ -285,7 +285,30 @@ class InstantMesher(bpy.types.Operator):
             printErrorMessage("Triangulation failed", e)
             return {'CANCELLED'}
 
+class InstantSymmetrize(bpy.types.Operator):
+    """Copies one side of the mesh to the other along the chosen axis"""
+    bl_idname = "ops.instantsymmetrize"
+    bl_label = "Bool Symmetrize Mesh"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    symm_int = bpy.props.FloatProperty(name="Threshold", min = 0.0001, max = 1, default = .001)       
+    
+    @classmethod
+    def poll(cls, context):
+        return context.active_object is not None and context.active_object.mode == 'OBJECT' and context.active_object.type == 'MESH' or context.active_object is not None and context.active_object.mode == 'VERTEX_PAINT'
 
+    def execute(self, context):
+        func = bpy.ops
+        wm = context.window_manager
+        mode_curr = context.active_object.mode
+        func.object.editmode_toggle()
+        func.mesh.select_all(action='SELECT')
+        func.mesh.symmetrize(direction = wm.instantsymm, threshold= self.symm_int)
+        func.mesh.remove_doubles()
+        func.object.editmode_toggle()
+        if mode_curr == 'VERTEX_PAINT':
+            func.object.mode_set(mode='VERTEX_PAINT')
+        return {'FINISHED'}
 
 
 class InstantMesherPanel(bpy.types.Panel):
@@ -367,6 +390,13 @@ class InstantMesherPanel(bpy.types.Panel):
             row = layout.row()
             layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
 
+            layout.separator()
+            layout.separator()
+
+            row = layout.row()
+            row.prop(wm, "instantsymm", text="")
+            layout.operator("ops.instantsymmetrize", text="Symmetrize mesh")
+
 
 # Utility functions
 def printErrorMessage(msg, e):
@@ -391,20 +421,33 @@ def register():
     bpy.utils.register_class(InstantMesherPanel)
     bpy.utils.register_class(InstantMesherPreferences)
 
+    bpy.types.WindowManager.instantsymm = EnumProperty(name="",
+                     items = (("NEGATIVE_X","-X to +X",""),
+                              ("POSITIVE_X","+X to -X",""),
+                              ("NEGATIVE_Y","-Y to +Y",""),
+                              ("POSITIVE_Y","+Y to -Y",""),
+                              ("NEGATIVE_Z","-Z to +Z",""),
+                              ("POSITIVE_Z","+Z to -Z","")),                                                                                           
+                     default = "POSITIVE_X")
+
+    bpy.utils.register_class(InstantSymmetrize)
     bpy.types.WindowManager.instantMesherSmoothingInt = IntProperty(min = 0, max = 10, default = 0)
     bpy.types.WindowManager.instantMesherVertexCountInt = IntProperty(min = 10, max = 100000000, default = 100)
     bpy.types.WindowManager.instantMesherQuadsBool = BoolProperty(default = False)
+
 
 
 def unregister():
     bpy.utils.unregister_class(InstantMesher)
     bpy.utils.unregister_class(InstantMesherPanel)
     bpy.utils.unregister_class(InstantMesherPreferences)
+    bpy.utils.unregister_class(InstantSymmetrize)
 
     try:
         del bpy.types.WindowManager.instantMesherSubdivInt
         del bpy.types.WindowManager.instantMesherVertexCountInt
         del bpy.types.WindowManager.instantMesherQuadsBool
+        del bpy.types.WindowManager.instantsymm
 
     except:
         pass
