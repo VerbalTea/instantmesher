@@ -357,8 +357,8 @@ class InstantMesherPanel(bpy.types.Panel):
             layout.separator()
             layout.separator()
 
-
         if instantmeshesPath != "":
+
             row = layout.row()
             row.label(text="Native Tools")
 
@@ -380,22 +380,22 @@ class InstantMesherPanel(bpy.types.Panel):
             layout.separator()
             layout.separator()
 
-            row = layout.row()
-            row.label(text="Utilities (experimental)")
-            row = layout.row()
-            layout.operator("ops.instantmesher", text="Clear Sharp Edges", icon="WORLD").operation = "clearsharp"
+        row = layout.row()
+        row.label(text="Utilities (experimental)")
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Clear Sharp Edges", icon="WORLD").operation = "clearsharp"
 
-            row = layout.row()
-            layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object", icon="MOD_SHRINKWRAP").operation = "shrinkwrap"
-            row = layout.row()
-            layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Shrinkwrap to target(active) object", icon="MOD_SHRINKWRAP").operation = "shrinkwrap"
+        row = layout.row()
+        layout.operator("ops.instantmesher", text="Triangulate Mesh", icon="MESH_DATA").operation = "triangulate"
 
-            layout.separator()
-            layout.separator()
+        layout.separator()
+        layout.separator()
 
-            row = layout.row()
-            row.prop(wm, "instantsymm", text="")
-            layout.operator("ops.instantsymmetrize", text="Symmetrize mesh")
+        row = layout.row()
+        row.prop(wm, "instantsymm", text="")
+        layout.operator("ops.instantsymmetrize", text="Symmetrize mesh")
 
 
 # Utility functions
